@@ -8,7 +8,7 @@ pg.mixer.init()
 W = 800
 H = 600
 FPS = 60
-
+                                                                
 # COLOR = (R, G, B)
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -21,6 +21,14 @@ screen = pg.display.set_mode((W, H))
 screen.fill(BLACK)
 pg.display.set_caption("My Game")
 clock = pg.time.Clock()
+
+
+def create_tower(event, color):
+    if event.type == pg.MOUSEBUTTONUP:
+        if event.button == 1:
+            tower = Tower(color)
+            all_sprites.add(tower)
+            towers.add(tower)
 
 
 class Tower(pg.sprite.Sprite):
@@ -54,7 +62,6 @@ class Shell(pg.sprite.Sprite):
         self.rect.centery = y
         self.speed = 10
 
-
     def update(self, target):
         """Направляет снаряд в цель"""
         alpha = Shell.angle(target.rect.centerx,
@@ -76,7 +83,7 @@ class Shell(pg.sprite.Sprite):
         if x2 - x1:
             alpha = atan(fabs((y2 - y1) / (x2 - x1)))        # Fixme
         else:
-            alpha = pi/2
+            alpha = 0
 
         if x1 < x2 and y1 > y2:
             alpha = pi - alpha
@@ -117,14 +124,10 @@ while status == 'running':
     clock.tick(FPS)
     # Ввод процесса (события)
     for event in pg.event.get():
-        if event.type == pg.MOUSEBUTTONUP:
-            if event.button == 1:
-                tower = Tower(WHITE)
-                all_sprites.add(tower)
-                towers.add(tower)
-                fire = True
+        create_tower(event, WHITE)
+        fire = True
 
-        elif event.type == pg.QUIT:
+        if event.type == pg.QUIT:
             status = 'quit'
 
     # Обновление
@@ -133,16 +136,18 @@ while status == 'running':
         towers.update()
     shells.update(target)
     counter += 1
-    target.rect.x += target.speed
 
+    # движение тестового таргета
+    target.rect.x += target.speed
     if target.rect.x > W or target.rect.x < 0:
         target.speed *= -1
 
+    # снаряд, попавший в цель, исчезает
     hits = pg.sprite.spritecollide(target, shells, True)
+
     # Рендеринг
     screen.fill(BLACK)
     all_sprites.draw(screen)
-    # После отрисовки всего, переворачиваем экран
     pg.display.flip()
 
 if status == 'quit':
