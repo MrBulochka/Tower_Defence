@@ -53,8 +53,7 @@ class Shell(pg.sprite.Sprite):
         self.rect.centerx = x
         self.rect.centery = y
         self.speed = 10
-        self.damage = 1  # Fixme
-        self.cooldown = 5  # Fixme
+
 
     def update(self, target):
         """Направляет снаряд в цель"""
@@ -89,7 +88,7 @@ class Shell(pg.sprite.Sprite):
 
 
 class Mob(pg.sprite.Sprite):
-    def __init__(self, x, y, level=None):
+    def __init__(self, x, y, level=0):
         pg.sprite.Sprite.__init__(self)
         self.image = pg.Surface((15, 15))
         self.image.fill(RED)
@@ -97,7 +96,7 @@ class Mob(pg.sprite.Sprite):
         self.rect.centerx = x
         self.rect.centery = y
         self.speed = 1 + 0.1 * level
-        self.hp = 10 * level
+        self.hp = 1 + 10 * level
 
     def update(self):
         self.rect.x += self.speed
@@ -108,8 +107,7 @@ all_sprites = pg.sprite.Group()
 towers = pg.sprite.Group()
 shells = pg.sprite.Group()
 
-cooldown = 10  # Fixme
-counter = 0  # Fixme
+counter = 0  # Переделать
 target = Mob(W/2, H/2)
 all_sprites.add(target)
 
@@ -130,11 +128,13 @@ while status == 'running':
             status = 'quit'
 
     # Обновление
-    if fire and counter % cooldown == 0:  # Fixme
+    # добавление частоты выстрелов
+    if fire and counter % 20 == 0:  # Переделать
         towers.update()
     shells.update(target)
-    counter += 1  # Fixme
+    counter += 1
     target.rect.x += target.speed
+
     if target.rect.x > W or target.rect.x < 0:
         target.speed *= -1
 
