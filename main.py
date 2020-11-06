@@ -1,12 +1,12 @@
 import pygame as pg
 import random
-from math import sin, cos, atan, fabs, pi
+from math import sin, cos, atan, fabs, pi, sqrt
 
 pg.init()
 pg.mixer.init()
 
-W = 800
-H = 600
+W = 1000
+H = 800
 FPS = 60
                                                                 
 # COLOR = (R, G, B)
@@ -23,7 +23,7 @@ pg.display.set_caption("My Game")
 clock = pg.time.Clock()
 
 
-def create_tower(event, color):
+def create_tower(color):
     if event.type == pg.MOUSEBUTTONUP:
         if event.button == 1:
             tower = Tower(color)
@@ -41,15 +41,31 @@ class Tower(pg.sprite.Sprite):
         self.rect.centerx = event.pos[0]
         self.rect.centery = event.pos[1]
         self.color = color
-
-    def targetting(self, target):
-        pass
+        self.radius = 200
 
     def update(self):
-        color = random.choice([GREEN, WHITE, RED, BLUE, YELLOW])
-        shell = Shell(self.rect.centerx, self.rect.centery, color)
-        all_sprites.add(shell)
-        shells.add(shell)
+        """Башня стреляет в таргет, если находится на дистанции поражения"""
+        distance = Tower.distance(self.rect.x,
+                                  self.rect.y,
+                                  target.rect.x,
+                                  target.rect.y)
+        if self.radius >= distance and target:
+            color = random.choice([GREEN, WHITE, RED, BLUE, YELLOW])
+            shell = Shell(self.rect.centerx, self.rect.centery, color)
+            all_sprites.add(shell)
+            shells.add(shell)
+
+    @staticmethod
+    def distance(x1, y1, x2, y2):
+        """Определяет расстояние между мобом и башней"""
+        if not x1 - x2:
+            distance = fabs(y1 - y2)
+        elif not y1 - y2:
+            distance = fabs(x1 - x2)
+        else:
+            distance = sqrt(fabs((x1-x2)**2 + (y1-y2)**2))
+
+        return distance
 
 
 class Shell(pg.sprite.Sprite):
@@ -61,8 +77,9 @@ class Shell(pg.sprite.Sprite):
         self.rect.centerx = x
         self.rect.centery = y
         self.speed = 10
+        self.damage = 1
 
-    def update(self, target):
+    def update(self):
         """Направляет снаряд в цель"""
         alpha = Shell.angle(target.rect.centerx,
                             target.rect.centery,
@@ -71,7 +88,8 @@ class Shell(pg.sprite.Sprite):
         self.rect.centerx += cos(alpha) * self.speed
         self.rect.centery += sin(alpha) * self.speed
         if (self.rect.centerx > W or self.rect.centerx < 0 or
-                self.rect.centery > H or self.rect.centery < 0):
+                self.rect.centery > H or self.rect.centery < 0 or
+                not target):
             self.kill()
 
     @staticmethod
@@ -81,16 +99,17 @@ class Shell(pg.sprite.Sprite):
         x2, y2 - координаты снаряда
         """
         if x2 - x1:
-            alpha = atan(fabs((y2 - y1) / (x2 - x1)))        # Fixme
+            alpha = atan(fabs((y2 - y1) / (x2 - x1)))
         else:
             alpha = 0
 
-        if x1 < x2 and y1 > y2:
+        if x1 < x2 and y1 >= y2:
             alpha = pi - alpha
         elif x1 < x2 and y1 < y2:
             alpha = pi + alpha
         elif x1 > x2 and y1 < y2:
             alpha = -alpha
+
         return alpha
 
 
@@ -102,8 +121,8 @@ class Mob(pg.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.centerx = x
         self.rect.centery = y
-        self.speed = 1 + 0.1 * level
-        self.hp = 1 + 10 * level
+        self.speed = 1 + 1 * level
+        self.hp = 30 + 10 * level
 
     def update(self):
         self.rect.x += self.speed
@@ -113,9 +132,11 @@ class Mob(pg.sprite.Sprite):
 all_sprites = pg.sprite.Group()
 towers = pg.sprite.Group()
 shells = pg.sprite.Group()
+mobs = pg.sprite.Group()
 
-counter = 0  # Переделать
-target = Mob(W/2, H/2)
+counter = 0  # Счетчик для кулдауна на атаку
+target = Mob(W / 2, H / 2)
+mobs.add(target)
 all_sprites.add(target)
 
 fire = False
@@ -124,26 +145,32 @@ while status == 'running':
     clock.tick(FPS)
     # Ввод процесса (события)
     for event in pg.event.get():
-        create_tower(event, WHITE)
+        create_tower(WHITE)
         fire = True
 
         if event.type == pg.QUIT:
             status = 'quit'
 
     # Обновление
-    # добавление частоты выстрелов
-    if fire and counter % 20 == 0:  # Переделать
+    # частота выстрелов
+    if fire and counter % 30 == 0:  # Переделать
         towers.update()
-    shells.update(target)
+    shells.update()
     counter += 1
 
     # движение тестового таргета
-    target.rect.x += target.speed
-    if target.rect.x > W or target.rect.x < 0:
-        target.speed *= -1
+    if target:
+        target.rect.x -= target.speed
+        if target.rect.x > W or target.rect.x < 0:
+            target.speed *= -1
 
-    # снаряд, попавший в цель, исчезает
+    # Fixme пораженный таргет перестает отрисовываться, но не исчезает
+    # снаряд, попавший в цель, исчезает и дамажит ее
     hits = pg.sprite.spritecollide(target, shells, True)
+    for hit in hits:
+        target.hp -= 1
+        if target.hp <= 0:
+            target.kill()
 
     # Рендеринг
     screen.fill(BLACK)
